@@ -1,0 +1,38 @@
+[
+ {
+  "id": "docs/contoh-kontrak.pdf",
+  "title": "Contoh Kontrak",
+  "file": "contoh-kontrak.pdf",
+  "path": "docs/contoh-kontrak.pdf",
+  "type": "pdf",
+  "size": 2975,
+  "pages": 3
+ },
+ {
+  "id": "docs/images/contoh-nota.png",
+  "title": "Contoh Nota",
+  "file": "contoh-nota.png",
+  "path": "docs/images/contoh-nota.png",
+  "type": "image",
+  "size": 34511,
+  "pages": 0
+ },
+ {
+  "id": "docs/panduan-penggunaan.md",
+  "title": "Panduan Penggunaan",
+  "file": "panduan-penggunaan.md",
+  "path": "docs/panduan-penggunaan.md",
+  "type": "md",
+  "size": 1589,
+  "pages": 0
+ },
+ {
+  "id": "docs/riset-static-search.md",
+  "title": "Riset Static Search",
+  "file": "riset-static-search.md",
+  "path": "docs/riset-static-search.md",
+  "type": "md",
+  "size": 1540,
+  "pages": 0
+ }
+]

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arsip Digital — GitHub Pages (PDF + MD + OCR)</title>
+<meta name="description" content="Hosting dokumen PDF dan Markdown gratis via GitHub Pages dengan fitur search kalimat dan OCR gambar.">
+<link rel="stylesheet" href="css/style.css">
+<!-- PDF.js (Mozilla) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<!-- Markdown renderer -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<!-- Fuzzy search -->
+<script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0"></script>
+<!-- OCR -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+</head>
+<body>
+
+<header>
+  <div class="hd-wrap">
+    <div class="logo">📚</div>
+    <div class="hd-title">
+      <h1>Arsip Digital</h1>
+      <p>GitHub Pages &bull; PDF + Markdown + OCR &bull; 100% gratis, tanpa server</p>
+      <span id="indexBadge" class="badge load">Memuat index…</span>
+    </div>
+    <div class="searchbar">
+      <input id="globalSearch" type="text" placeholder="Cari kalimat di semua dokumen… mis. pembayaran termin kedua" autocomplete="off">
+      <button id="btnSearch">🔍 Cari</button>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+  <aside>
+    <h3>📁 Daftar Dokumen <span id="docCount" class="muted"></span></h3>
+    <div class="filters">
+      <button data-f="all" class="active">Semua</button>
+      <button data-f="pdf">📕 PDF</button>
+      <button data-f="md">📝 MD</button>
+      <button data-f="image">🖼️ Gambar</button>
+      <button data-f="ocr" title="Buka tab OCR">✨ OCR</button>
+    </div>
+    <div id="docList"></div>
+    <div class="howto">
+      ➕ <b>Tambah dokumen:</b> taruh file ke folder <code>docs/</code>, jalankan <code>python3 scripts/build-index.py</code>, lalu <code>git push</code>. Detail di <code>README.md</code>.
+    </div>
+  </aside>
+
+  <main>
+    <!-- WELCOME -->
+    <div id="view-welcome" class="card">
+      <h2>Selamat datang 👋</h2>
+      <p class="muted">Pilih dokumen di kiri, atau cari kalimat langsung dari kolom pencarian atas. Semua pencarian berjalan <b>di browser</b> — tanpa server, tanpa biaya.</p>
+      <div class="grid3">
+        <div class="feat">📕 <b>PDF + Search kalimat</b><span class="small muted">Buka PDF, ketik kalimat, lompat ke halaman yang mengandung + highlight.</span></div>
+        <div class="feat">📝 <b>Markdown viewer</b><span class="small muted">File .md otomatis jadi HTML rapi + bisa di-find.</span></div>
+        <div class="feat">✨ <b>OCR gambar (ID+EN)</b><span class="small muted">Upload foto/scan → ekstrak teks → search &amp; download.</span></div>
+      </div>
+      <h3>Coba klik untuk testing:</h3>
+      <div class="chips" id="testChips">
+        <button class="chip">pembayaran termin kedua</button>
+        <button class="chip">jadwal pemeliharaan server</button>
+        <button class="chip">tanda tangan direktur utama</button>
+        <button class="chip">retensi backup adalah 30 hari</button>
+        <button class="chip">CNT-2026-09-144</button>
+      </div>
+      <p class="small muted" id="welcomeStats"></p>
+    </div>
+
+    <!-- GLOBAL RESULTS -->
+    <div id="view-results" class="card hidden">
+      <h2 id="resTitle">Hasil pencarian</h2>
+      <p class="muted small" id="resMeta"></p>
+      <div id="resList"></div>
+      <button class="btn ghost" id="btnBackWelcome">← Kembali</button>
+    </div>
+
+    <!-- PDF VIEWER -->
+    <div id="view-pdf" class="card hidden">
+      <h2 id="pdfTitle" style="margin-bottom:4px">PDF</h2>
+      <p class="muted small" id="pdfMeta"></p>
+      <div class="toolbar">
+        <button id="pdfPrev">◀</button>
+        <span class="pginfo"><input type="number" id="pdfPageNum" value="1" min="1" style="width:60px"> / <span id="pdfPageCount">?</span></span>
+        <button id="pdfNext">▶</button>
+        <span class="sep"></span>
+        <button id="pdfZoomOut">➖</button>
+        <button id="pdfZoomIn">➕</button>
+        <span class="sep"></span>
+        <input type="text" id="pdfFind" placeholder="Cari kalimat di PDF ini…" style="min-width:170px;flex:1">
+        <button id="pdfFindPrev">▲</button>
+        <button id="pdfFindNext">▼</button>
+        <span class="findstat" id="pdfFindStat"></span>
+        <span class="sep"></span>
+        <button id="btnOcrPage" class="primary">✨ OCR halaman ini</button>
+        <button id="btnPdfDl">⬇ Unduh</button>
+      </div>
+      <div id="pdfFindPages" class="small" style="margin-bottom:8px"></div>
+      <div id="pdfWrap"><div id="pdfCanvasBox"><canvas id="pdfCanvas"></canvas><div id="textLayer"></div></div></div>
+      <p class="small muted" style="margin-top:8px">💡 Tips: PDF hasil scan (foto) tidak punya teks — gunakan tombol <b>OCR halaman ini</b>. PDF teks asli langsung bisa dicari.</p>
+    </div>
+
+    <!-- MD VIEWER -->
+    <div id="view-md" class="card hidden">
+      <h2 id="mdTitle">Markdown</h2>
+      <p class="muted small" id="mdMeta"></p>
+      <div class="mdbar">
+        <input type="text" id="mdFind" placeholder="Cari di dokumen ini…">
+        <button class="btn" id="btnMdFind">Cari</button>
+        <button class="btn ghost" id="btnMdDl">⬇ Unduh .md</button>
+      </div>
+      <p class="small muted" id="mdFindStat"></p>
+      <hr style="border:none;border-top:1px solid var(--line)">
+      <div id="mdContent"></div>
+    </div>
+
+    <!-- OCR -->
+    <div id="view-ocr" class="card hidden">
+      <h2>✨ OCR Gambar → Teks</h2>
+      <p class="muted">Upload foto/scan (JPG/PNG). Proses 100% di browser via Tesseract.js. Bahasa: Indonesia + Inggris.</p>
+      <div class="drop" id="ocrDrop">
+        <div style="font-size:34px">🖼️</div>
+        <b>Klik / drag &amp; drop gambar ke sini</b>
+        <div class="small muted">atau gunakan contoh bawaan:</div>
+        <div style="margin-top:8px"><button class="btn ghost" id="btnOcrSample" type="button">Gunakan contoh-nota.png</button></div>
+        <input type="file" id="ocrFile" accept="image/*">
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <label class="small">Bahasa:</label>
+        <select id="ocrLang">
+          <option value="ind+eng" selected>Indonesia + Inggris</option>
+          <option value="ind">Indonesia saja</option>
+          <option value="eng">Inggris saja</option>
+        </select>
+        <button class="btn" id="btnOcrRun">▶ Jalankan OCR</button>
+      </div>
+      <div class="progress hidden" id="ocrProgWrap"><i id="ocrProg"></i></div>
+      <p class="small muted" id="ocrStatus"></p>
+      <img id="ocrPreview" class="hidden" alt="preview">
+      <div style="display:flex;gap:8px;margin:8px 0;flex-wrap:wrap">
+        <input type="text" id="ocrFind" placeholder="Cari di hasil OCR…" style="flex:1;min-width:180px;padding:9px 12px;border:1px solid var(--line);border-radius:8px">
+        <button class="btn ghost" id="btnOcrCopy">📋 Salin</button>
+        <button class="btn ghost" id="btnOcrDl">⬇ .txt</button>
+      </div>
+      <textarea id="ocrResult" placeholder="Hasil teks OCR akan muncul di sini…"></textarea>
+    </div>
+  </main>
+</div>
+
+<!-- Modal OCR halaman PDF -->
+<div id="modal" class="hidden">
+  <div id="modalBox">
+    <h3 style="margin-top:0">✨ Hasil OCR — <span id="mPage"></span></h3>
+    <div class="progress" id="mProgWrap"><i id="mProg"></i></div>
+    <p class="small muted" id="mStatus">Memproses…</p>
+    <pre id="mText">…</pre>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn" id="btnModalCopy">📋 Salin teks</button>
+      <button class="btn ghost" id="btnModalClose">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<footer>
+  Arsip Digital &bull; Static hosting via <b>GitHub Pages</b> (gratis) &bull; Search: Fuse.js + PDF.js &bull; OCR: Tesseract.js<br>
+  Tambah file cukup via <b>git push</b> — lihat README.md &bull; Dibuat 17 Sep 2026
+</footer>
+
+<script src="js/app.js"></script>
+</body>
+</html>
